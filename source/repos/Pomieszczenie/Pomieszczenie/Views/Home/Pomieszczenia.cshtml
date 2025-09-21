@@ -1,0 +1,75 @@
+﻿@{
+    ViewData["Title"] = "Pomieszczenia";
+}
+@model List<Pomieszczenia>
+<div class="text-center">
+    <h1 class="display-4">Pomieszczenia</h1>
+    <br />
+    <table class="table">
+        <thead>
+            <tr>
+                <th>
+                    Id
+                </th>
+                <th>
+                    Nazwa
+                </th>
+                <th>
+                    Szacowana Wielkość
+                <th>
+                    Opis
+                </th>
+                <th>
+                    Url Zdjęcia
+                </th>
+                <th>
+                    Szerokość
+                </th>
+                <th>
+                    Wysokość
+                </th>
+                <th>
+                    Data Pomiaru
+                </th>
+                
+            </tr>
+        </thead>
+        <tbody>
+            @{
+                foreach (var pomieszczenia in Model)
+                {
+                    <tr>
+                    <td>
+                    @pomieszczenia.Id
+                    </td>
+                        <td>
+                            @pomieszczenia.Nazwa
+                        </td>
+                        <td>
+                            @pomieszczenia.SzacowanaWielkosc
+                        </td>
+                        <td>
+                            @pomieszczenia.Opis
+                        </td>
+                        <td>
+                            @pomieszczenia.ThumbnailUrl
+                        </td>
+                        <td>
+                            @pomieszczenia.PunktyLokacji[0].Szerokość
+                        </td>
+                        <td>
+                            @pomieszczenia.PunktyLokacji[0].Wysokość
+                        </td>
+                        <td>
+                            @pomieszczenia.PunktyLokacji[0].DataPomiaru
+                        </td>
+                        <td>
+                        <a asp-action="CreateEditPomieszczenia" asp-route-id="@pomieszczenia.Id">Edytuj</a>
+                        <a asp-action="DeletePomieszczenia" asp-route-id="@pomieszczenia.Id">Usuń</a>
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>

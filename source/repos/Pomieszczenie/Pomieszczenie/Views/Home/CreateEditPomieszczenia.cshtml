@@ -1,0 +1,47 @@
+﻿@{
+    ViewData["Title"] = "Stwórz / Edytuj";
+}
+@model WebApplication1.Models.Pomieszczenia
+
+<div class="text-center">
+    <h1 class="display-4">Stwórz lub edytuj pomieszczenie</h1>
+</div>
+
+<form asp-action="CreateEditPomieszczeniaForm" asp-controller="Home" method="post">
+    <input type="hidden" asp-for="Id" />
+    <label class="mt-4">Nazwa</label>
+    <input class="form-control" type="text" placeholder="Podaj nazwe" asp-for="Nazwa" />
+
+    <label class="mt-4">Szacowana wielkość</label>
+    <input class="form-control" type="number" placeholder="0" asp-for="SzacowanaWielkosc" />
+
+    <label class="mt-4">Opis</label>
+    <input class="form-control" type="text" placeholder="Opis" asp-for="Opis" />
+
+    <label class="mt-4">Url do zdjęcia</label>
+    <input class="form-control" type="text" placeholder="URL" asp-for="ThumbnailUrl" />
+
+    <h4 class="mt-4">Punkt Lokacji</h4>
+    
+        @if (Model?.PunktyLokacji != null && Model.PunktyLokacji.Count > 0)
+        {
+            @for (int i = 0; i < Model.PunktyLokacji.Count; i++)
+            {
+                <div>
+                    <label class="mt-4">Szerokość</label>
+                <input class="form-control"  asp-for="PunktyLokacji[@i].Szerokość" />
+                <label class="mt-4">Wysokość</label>
+                <input class="form-control"  asp-for="PunktyLokacji[@i].Wysokość" />
+                <label class="mt-4">Data pomiaru</label>
+                    <input class="form-control" asp-for="PunktyLokacji[@i].DataPomiaru" />
+                </div>
+            }
+        }
+        else
+        {
+            <p>Brak punktów lokacji.</p>
+        }
+    
+
+    <button class="btn btn-primary mt-4" type="submit">Zapisz</button>
+</form>
