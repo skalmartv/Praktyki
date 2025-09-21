@@ -12,4 +12,6 @@ obj/
 # Others
 *.dbmdl
 *.pdb
-*.opendb
+*.opendb.vs/
+bin/
+obj/
