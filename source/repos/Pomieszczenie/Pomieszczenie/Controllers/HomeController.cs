@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebApplication1.Models;
@@ -21,6 +22,24 @@ namespace WebApplication1.Controllers
 			return View();
 		}
 
+
+
+		public IActionResult DeletePomieszczenia(int id)
+		{
+			var PomieszczeniaiInDb = _context.Pomieszczenia.SingleOrDefault(pomieszczenie => pomieszczenie.Id == id);
+			_context.Pomieszczenia.Remove(PomieszczeniaiInDb);
+			_context.SaveChanges();
+			return RedirectToAction("Pomieszczenia");
+
+		}
+
+		
+		[Authorize]
+		public IActionResult Privacy()
+		{
+			return View();
+		}
+		[Authorize(Roles = "User")]
 		public IActionResult Pomieszczenia()
 		{
 			var allPomieszczenia = _context.Pomieszczenia
@@ -30,6 +49,7 @@ namespace WebApplication1.Controllers
 		}
 
 		[HttpGet]
+		[Authorize(Roles = "User")]
 		public IActionResult CreateEditPomieszczenia(int? id)
 		{
 			if (id.HasValue)
@@ -38,7 +58,7 @@ namespace WebApplication1.Controllers
 									   .Include(p => p.PunktyLokacji)
 									   .FirstOrDefault(p => p.Id == id.Value);
 				if (existing == null) return NotFound();
-				if(id != null)
+				if (id != null)
 				{
 					var PomieszczeniaiInDb = _context.Pomieszczenia.SingleOrDefault(pomieszczenie => pomieszczenie.Id == id);
 					return View(PomieszczeniaiInDb);
@@ -51,17 +71,9 @@ namespace WebApplication1.Controllers
 				PunktyLokacji = new List<PunktLokacji> { new PunktLokacji() }
 			});
 		}
-		public IActionResult DeletePomieszczenia(int id)
-		{
-			var PomieszczeniaiInDb = _context.Pomieszczenia.SingleOrDefault(pomieszczenie => pomieszczenie.Id == id);
-			_context.Pomieszczenia.Remove(PomieszczeniaiInDb);
-			_context.SaveChanges();
-			return RedirectToAction("Pomieszczenia");
-
-		}
-
 		[HttpPost]
 		[ValidateAntiForgeryToken]
+		[Authorize(Roles = "User")]
 		public IActionResult CreateEditPomieszczeniaForm(Pomieszczenia model)
 		{
 			if (model.PunktyLokacji == null || model.PunktyLokacji.Count == 0)
@@ -104,12 +116,6 @@ namespace WebApplication1.Controllers
 			_context.SaveChanges();
 			return RedirectToAction(nameof(Pomieszczenia));
 		}
-
-		public IActionResult Privacy()
-		{
-			return View();
-		}
-
 		[ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
 		public IActionResult Error()
 		{

@@ -23,12 +23,6 @@
                     Url Zdjęcia
                 </th>
                 <th>
-                    Szerokość
-                </th>
-                <th>
-                    Wysokość
-                </th>
-                <th>
                     Data Pomiaru
                 </th>
                 
@@ -46,19 +40,13 @@
                             @pomieszczenia.Nazwa
                         </td>
                         <td>
-                            @pomieszczenia.SzacowanaWielkosc
+                            @(pomieszczenia.PunktyLokacji[0].Szerokość * pomieszczenia.PunktyLokacji[0].Wysokość) m²
                         </td>
                         <td>
                             @pomieszczenia.Opis
                         </td>
                         <td>
                             @pomieszczenia.ThumbnailUrl
-                        </td>
-                        <td>
-                            @pomieszczenia.PunktyLokacji[0].Szerokość
-                        </td>
-                        <td>
-                            @pomieszczenia.PunktyLokacji[0].Wysokość
                         </td>
                         <td>
                             @pomieszczenia.PunktyLokacji[0].DataPomiaru
