@@ -1,0 +1,123 @@
+@using System.Linq
+@model List<WebApplication1.Models.Pokoj>
+
+@{
+    ViewData["Title"] = "Kreator";
+}
+
+<div class="container my-5">
+    <h1 class="mb-4 text-primary">Kreator</h1>
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <button id="showFormBtn" class="btn btn-primary mb-4">Dodaj pomieszczenie</button>
+
+    <div id="formDiv" style="display:none;">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white">
+                Dodaj nowe pomieszczenie
+            </div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="nazwa" class="form-label">Nazwa</label>
+                        <input type="text" class="form-control" id="nazwa" name="nazwa" required />
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="szacowanaWielkosc" class="form-label">Szacowana wielkość (m²)</label>
+                        <input type="number" class="form-control" id="szacowanaWielkosc" name="szacowanaWielkosc" min="1" step="1" required />
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="opis" class="form-label">Opis</label>
+                        <textarea class="form-control" id="opis" name="opis" rows="3"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="zdjecie" class="form-label">Zdjęcie pokoju</label>
+                        <input type="file" class="form-control" id="zdjecie" name="zdjecie" accept="image/*" />
+                        <small class="form-text text-muted">Opcjonalne</small>
+                    </div>
+
+                    <h5 class="mt-4">Punkty lokacji</h5>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label for="latitude" class="form-label">Latitude</label>
+                            <input type="number" step="any" class="form-control" id="latitude" name="latitude" />
+                        </div>
+                        <div class="col-md-4">
+                            <label for="longitude" class="form-label">Longitude</label>
+                            <input type="number" step="any" class="form-control" id="longitude" name="longitude" />
+                        </div>
+                        <div class="col-md-4">
+                            <label for="dataPomiaru" class="form-label">Data pomiaru</label>
+                            <input type="date" class="form-control" id="dataPomiaru" name="dataPomiaru" />
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-success mt-3 w-100">Zastosuj</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    @if (Model != null && Model.Count > 0)
+    {
+        <h2 class="mb-3">Lista pokoi</h2>
+        <div class="row g-4">
+            @foreach (var pokoj in Model)
+            {
+                <div class="col-md-6 col-lg-4">
+                    <div class="card shadow-sm h-100">
+                        @if (pokoj.Zdjecia != null && pokoj.Zdjecia.Any())
+                        {
+                            <img src="~/uploads/@pokoj.Zdjecia.First().NazwaPliku" class="card-img-top" alt="Zdjęcie pokoju" style="height:200px; object-fit:cover;">
+                        }
+                        <div class="card-body d-flex flex-column">
+                            <h5 class="card-title">@pokoj.Nazwa</h5>
+                            <p class="card-text text-muted mb-1">Wielkość: @($"{pokoj.SzacowanaWielkosc} m²")</p>
+                            <p class="card-text">@pokoj.Opis</p>
+
+                            <h6>Punkty lokacji:</h6>
+                            @if (pokoj.PunktyLokacji != null && pokoj.PunktyLokacji.Any())
+                            {
+                                <ul class="small mb-2">
+                                    @foreach (var punkt in pokoj.PunktyLokacji)
+                                    {
+                                        <li>Lat: @punkt.Latitude, Lng: @punkt.Longitude, Data: @punkt.DataPomiaru.ToShortDateString()</li>
+                                    }
+                                </ul>
+                            }
+                            else
+                            {
+                                <p class="small text-muted mb-2">Brak punktów</p>
+                            }
+
+                            <div class="mt-auto d-flex gap-2">
+                                <a asp-action="Edit" asp-route-id="@pokoj.Id" class="btn btn-warning btn-sm w-50">Edytuj</a>
+                                <a asp-action="Delete" asp-route-id="@pokoj.Id" class="btn btn-danger btn-sm w-50" onclick="return confirm('Czy na pewno chcesz usunąć ten pokój?');">Usuń</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        document.getElementById("showFormBtn").addEventListener("click", function () {
+            document.getElementById("formDiv").style.display = "block";
+            this.style.display = "none";
+        });
+    </script>
+}
+
