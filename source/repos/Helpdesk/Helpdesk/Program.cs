@@ -1,37 +1,44 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using WebApplication1.Data;
-using WebApplication1.Models;
+using Helpdesk.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Dodaj AppDbContext
 builder.Services.AddDbContext<AppDbContext>(options =>
 	options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Dodaj Identity z w³asn¹ klas¹ Users
-builder.Services.AddIdentity<Users, IdentityRole>(options =>
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
 	options.Password.RequireDigit = true;
 	options.Password.RequiredLength = 6;
 	options.Password.RequireNonAlphanumeric = false;
 	options.Password.RequireUppercase = true;
 	options.Password.RequireLowercase = true;
-
-	options.User.RequireUniqueEmail = true; // jeœli chcesz wymuszaæ unikalny email
 })
-.AddEntityFrameworkStores<AppDbContext>() // korzystamy z AppDbContext
+.AddEntityFrameworkStores<AppDbContext>()
 .AddDefaultTokenProviders();
 
-// Dodaj kontrolery z widokami
 builder.Services.AddControllersWithViews();
-
-// Dodaj obs³ugê Razor Pages (Identity czasami wymaga)
 builder.Services.AddRazorPages();
 
 var app = builder.Build();
 
-// Middleware
+// --- automatyczne tworzenie ról ---
+using (var scope = app.Services.CreateScope())
+{
+	var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+	string[] roles = { "User", "Agent", "Admin" };
+
+	foreach (var role in roles)
+	{
+		if (!await roleManager.RoleExistsAsync(role))
+		{
+			await roleManager.CreateAsync(new IdentityRole(role));
+		}
+	}
+}
+// --- koniec tworzenia ról ---
+
 if (!app.Environment.IsDevelopment())
 {
 	app.UseExceptionHandler("/Home/Error");
@@ -43,14 +50,12 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
-app.UseAuthentication(); // musi byæ przed Authorization
+app.UseAuthentication();
 app.UseAuthorization();
 
-// Mapowanie kontrolerów + opcjonalnie Razor Pages
 app.MapControllerRoute(
 	name: "default",
 	pattern: "{controller=Home}/{action=Index}/{id?}");
-
-app.MapRazorPages(); 
+app.MapRazorPages();
 
 app.Run();
