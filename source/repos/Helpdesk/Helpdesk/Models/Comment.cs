@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
+using Helpdesk.Models; 
 
 public class Comment
 {
@@ -13,4 +14,5 @@ public class Comment
 	// Relacje
 	public int TicketId { get; set; }
 	public Ticket Ticket { get; set; }
+	public string UserId { get; set; } // Dodano pole UserId
 }

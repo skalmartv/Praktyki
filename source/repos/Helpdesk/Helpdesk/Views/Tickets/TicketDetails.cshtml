@@ -1,0 +1,118 @@
+﻿@model Helpdesk.Models.Ticket
+
+@{
+    ViewData["Title"] = "TicketDetails";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var isAuth = User?.Identity?.IsAuthenticated ?? false;
+    var currentUserId = User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+}
+
+<h1>Ticket Details</h1>
+
+@if (TempData["UploadError"] is string uploadErr && !string.IsNullOrWhiteSpace(uploadErr))
+{
+    <div class="alert alert-danger">@uploadErr</div>
+}
+@if (TempData["CommentError"] is string commentErr && !string.IsNullOrWhiteSpace(commentErr))
+{
+    <div class="alert alert-danger">@commentErr</div>
+}
+
+<div>
+    <h4>Ticket</h4>
+    <hr />
+    <dl class="row">
+        <dt class="col-sm-2">@Html.DisplayNameFor(model => model.Title)</dt>
+        <dd class="col-sm-10">@Html.DisplayFor(model => model.Title)</dd>
+        <dt class="col-sm-2">@Html.DisplayNameFor(model => model.Description)</dt>
+        <dd class="col-sm-10">@Html.DisplayFor(model => model.Description)</dd>
+        <dt class="col-sm-2">@Html.DisplayNameFor(model => model.CreatedAt)</dt>
+        <dd class="col-sm-10">@Html.DisplayFor(model => model.CreatedAt)</dd>
+        <dt class="col-sm-2">@Html.DisplayNameFor(model => model.UserId)</dt>
+        <dd class="col-sm-10">@Html.DisplayFor(model => model.UserId)</dd>
+    </dl>
+</div>
+
+<hr />
+
+<h4>Dodaj załącznik</h4>
+<form asp-action="UploadAttachment" asp-controller="Tickets" method="post" enctype="multipart/form-data">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="ticketId" value="@Model.Id" />
+    <div class="form-group">
+        <input type="file" name="file" class="form-control" required />
+    </div>
+    <button type="submit" class="btn btn-secondary mt-2">Wyślij</button>
+</form>
+
+<hr />
+
+<h4>Załączniki</h4>
+@if (Model.Attachments != null && Model.Attachments.Any())
+{
+    <ul class="list-group mb-3">
+        @foreach (var attachment in Model.Attachments.OrderByDescending(a => a.UploadedAt))
+        {
+            <li class="list-group-item">
+                <a asp-action="DownloadAttachment" asp-controller="Tickets" asp-route-id="@attachment.Id">
+                    @attachment.FileName
+                </a>
+            </li>
+        }
+    </ul>
+}
+else
+{
+    <p>Brak załączników.</p>
+}
+
+<hr />
+
+<h4>Dodaj komentarz</h4>
+<form asp-action="AddComment" asp-controller="Tickets" method="post">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="ticketId" value="@Model.Id" />
+    <div class="form-group">
+        <textarea name="content" class="form-control" rows="3" placeholder="Napisz komentarz..." required></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary mt-2">Dodaj</button>
+</form>
+
+<hr />
+
+<h4>Komentarze</h4>
+@if (Model.Comments != null && Model.Comments.Any())
+{
+    <ul class="list-group mb-3">
+        @foreach (var comment in Model.Comments.OrderByDescending(c => c.CreatedAt))
+        {
+            <li class="list-group-item d-flex justify-content-between align-items-start">
+                <div>
+                    <strong>@comment.UserId</strong> napisał:
+                    <p>@comment.Content</p>
+                    <small class="text-muted">@comment.CreatedAt.ToString("g")</small>
+                </div>
+
+                @if (isAuth && comment.UserId == currentUserId)
+                {
+                    <form asp-action="DeleteComment" asp-controller="Tickets" method="post" class="ms-2">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@comment.Id" />
+                        <button type="submit" class="btn btn-sm btn-danger">Usuń</button>
+                    </form>
+                }
+            </li>
+        }
+    </ul>
+}
+else
+{
+    <p>Brak komentarzy.</p>
+}
+
+<hr />
+
+<div>
+    <a asp-action="TicketEdit" asp-route-id="@Model?.Id">Edit</a> |
+    <a asp-action="TicketIndex">Back to List</a>
+</div>

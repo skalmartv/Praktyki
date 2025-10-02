@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Helpdesk.Models; // Upewnij się, że plik Ticket.cs znajduje się w przestrzeni nazw Helpdesk.Models
 
 namespace Helpdesk.Data
 {
