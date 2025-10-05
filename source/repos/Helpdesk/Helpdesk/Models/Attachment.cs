@@ -1,5 +1,4 @@
 ﻿using Helpdesk.Data;
-using Helpdesk.Models;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using System;
 using System.ComponentModel.DataAnnotations;

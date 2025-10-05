@@ -2,6 +2,7 @@
 
 @{
     ViewData["Title"] = "Moje tickety";
+    var currentUserId = ViewBag.CurrentUserId as string;
 }
 
 <h2>@ViewData["Title"]</h2>
@@ -28,7 +29,10 @@
                 <td>@ticket.Status</td>
                 <td>
                     <a class="btn btn-info btn-sm" asp-controller="Tickets" asp-action="TicketDetails" asp-route-id="@ticket.Id">Szczegóły</a>
-                    <a class="btn btn-warning btn-sm" asp-controller="Tickets" asp-action="TicketEdit" asp-route-id="@ticket.Id">Edytuj</a>
+                    @if (ticket.UserId == currentUserId)
+                    {
+                        <a class="btn btn-warning btn-sm" asp-controller="Tickets" asp-action="TicketEdit" asp-route-id="@ticket.Id">Edytuj</a>
+                    }
                     <a class="btn btn-danger btn-sm" asp-controller="Tickets" asp-action="TicketDelete" asp-route-id="@ticket.Id">Usuń</a>
                 </td>
             </tr>

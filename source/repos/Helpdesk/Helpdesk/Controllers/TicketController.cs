@@ -21,45 +21,56 @@ namespace Helpdesk.Controllers
 			_env = env;
 		}
 
-		// GET: Tickets
+		private static readonly string[] _allowedStatuses = new[] { "Nowy", "Otwarte", "W toku", "Oczekuje", "Zamknięty" };
+
 		public async Task<IActionResult> TicketIndex()
 		{
 			var user = await _userManager.GetUserAsync(User);
-			if (user == null)
-				return Challenge();
+			if (user == null) return Challenge();
 
-			var tickets = await _context.Tickets
-				.Where(t => t.UserId == user.Id)
+			bool isAgent = await _userManager.IsInRoleAsync(user, "Agent") || await _userManager.IsInRoleAsync(user, "Admin");
+
+			var query = _context.Tickets.AsQueryable();
+
+			if (!isAgent)
+				query = query.Where(t => t.UserId == user.Id);
+
+			var tickets = await query
+				.Include(t => t.AssignedTo)
+				.Include(t => t.CreatedBy)
 				.ToListAsync();
+
+			ViewBag.CurrentUserId = user.Id;
 			return View(tickets);
 		}
 
-		// GET: Tickets/Details/5
 		public async Task<IActionResult> TicketDetails(int? id)
 		{
 			if (id == null) return NotFound();
-
 			var user = await _userManager.GetUserAsync(User);
-			if (user == null)
-				return Challenge();
+			if (user == null) return Challenge();
+
+			bool isAgent = await _userManager.IsInRoleAsync(user, "Agent") || await _userManager.IsInRoleAsync(user, "Admin");
 
 			var ticket = await _context.Tickets
-				.Include(t => t.Comments)
-				.Include(t => t.Attachments)
-				.FirstOrDefaultAsync(t => t.Id == id && t.UserId == user.Id);
+				.Include(t => t.CreatedBy)
+				.Include(t => t.AssignedTo)
+				.Include(t => t.Comments).ThenInclude(c => c.User)
+				.Include(t => t.Attachments).ThenInclude(a => a.User)
+				.FirstOrDefaultAsync(t => t.Id == id && (isAgent || t.UserId == user.Id));
 
 			if (ticket == null) return NotFound();
 
+			ViewBag.AllowedStatuses = _allowedStatuses;
+			ViewBag.CurrentUserId = user.Id;
 			return View(ticket);
 		}
 
-		// GET: Tickets/Create
 		public IActionResult TicketCreate()
 		{
 			return View();
 		}
 
-		// POST: Tickets/Create
 		[HttpPost]
 		[ValidateAntiForgeryToken]
 		public async Task<IActionResult> TicketCreate(Ticket ticket)
@@ -80,56 +91,61 @@ namespace Helpdesk.Controllers
 			return View(ticket);
 		}
 
-		// GET: Tickets/Edit/5
+		// OGRANICZENIE: tylko właściciel może edytować zawartość (tytuł/opis)
 		public async Task<IActionResult> TicketEdit(int? id)
 		{
 			if (id == null) return NotFound();
-
 			var user = await _userManager.GetUserAsync(User);
-			if (user == null)
-				return Challenge();
+			if (user == null) return Challenge();
 
 			var ticket = await _context.Tickets
 				.FirstOrDefaultAsync(t => t.Id == id && t.UserId == user.Id);
 
-			if (ticket == null) return NotFound();
+			if (ticket == null) return Forbid(); // brak dostępu dla agenta/admina jeśli nie jest właścicielem
 
 			return View(ticket);
 		}
 
-		// POST: Tickets/Edit/5
+		// OGRANICZENIE: tylko właściciel może zmienić tytuł/opis
 		[HttpPost]
 		[ValidateAntiForgeryToken]
 		public async Task<IActionResult> TicketEdit(int id, Ticket formModel)
 		{
 			var user = await _userManager.GetUserAsync(User);
-			if (user == null)
-				return Challenge();
-
-			if (!ModelState.IsValid)
-				return View(formModel);
+			if (user == null) return Challenge();
+			if (!ModelState.IsValid) return View(formModel);
 
 			var ticket = await _context.Tickets.FirstOrDefaultAsync(t => t.Id == id && t.UserId == user.Id);
-			if (ticket == null) return NotFound();
+			if (ticket == null) return Forbid();
 
 			ticket.Title = formModel.Title;
 			ticket.Description = formModel.Description;
-			ticket.Status = formModel.Status;
-
-			try
-			{
-				await _context.SaveChangesAsync();
-			}
-			catch (DbUpdateConcurrencyException)
-			{
-				if (!_context.Tickets.Any(e => e.Id == id)) return NotFound();
-				else throw;
-			}
-
-			return RedirectToAction(nameof(TicketIndex));
+			await _context.SaveChangesAsync();
+			return RedirectToAction(nameof(TicketDetails), new { id = id });
 		}
 
-		// GET: Tickets/Delete/5
+		// NOWE: osobny endpoint do zmiany statusu (TERAZ tylko Agent/Admin)
+		[HttpPost]
+		[ValidateAntiForgeryToken]
+		public async Task<IActionResult> UpdateStatus(int id, string status)
+		{
+			var user = await _userManager.GetUserAsync(User);
+			if (user == null) return Challenge();
+
+			bool isAgent = await _userManager.IsInRoleAsync(user, "Agent") || await _userManager.IsInRoleAsync(user, "Admin");
+			if (!isAgent) return Forbid(); // zwykły użytkownik nie może zmieniać statusu
+
+			var ticket = await _context.Tickets.FirstOrDefaultAsync(t => t.Id == id);
+			if (ticket == null) return NotFound();
+
+			if (!string.IsNullOrWhiteSpace(status) && _allowedStatuses.Contains(status))
+				ticket.Status = status;
+
+			await _context.SaveChangesAsync();
+			return RedirectToAction(nameof(TicketDetails), new { id });
+		}
+
+		// USUWANIE: właściciel lub agent/admin mogą usuwać
 		public async Task<IActionResult> TicketDelete(int? id)
 		{
 			if (id == null) return NotFound();
@@ -138,15 +154,16 @@ namespace Helpdesk.Controllers
 			if (user == null)
 				return Challenge();
 
+			bool isAgent = await _userManager.IsInRoleAsync(user, "Agent") || await _userManager.IsInRoleAsync(user, "Admin");
+
 			var ticket = await _context.Tickets
-				.FirstOrDefaultAsync(t => t.Id == id && t.UserId == user.Id);
+				.FirstOrDefaultAsync(t => t.Id == id && (t.UserId == user.Id || isAgent));
 
 			if (ticket == null) return NotFound();
 
 			return View("TicketDelete", ticket);
 		}
 
-		// POST: Tickets/Delete/5
 		[HttpPost, ActionName("TicketDelete")]
 		[ValidateAntiForgeryToken]
 		public async Task<IActionResult> TicketDeleteConfirmed(int id)
@@ -155,8 +172,10 @@ namespace Helpdesk.Controllers
 			if (user == null)
 				return Challenge();
 
+			bool isAgent = await _userManager.IsInRoleAsync(user, "Agent") || await _userManager.IsInRoleAsync(user, "Admin");
+
 			var ticket = await _context.Tickets
-				.FirstOrDefaultAsync(t => t.Id == id && t.UserId == user.Id);
+				.FirstOrDefaultAsync(t => t.Id == id && (t.UserId == user.Id || isAgent));
 
 			if (ticket != null)
 			{
@@ -166,7 +185,6 @@ namespace Helpdesk.Controllers
 			return RedirectToAction(nameof(TicketIndex));
 		}
 
-		// POST: Tickets/AddComment
 		[HttpPost]
 		[ValidateAntiForgeryToken]
 		public async Task<IActionResult> AddComment(int ticketId, string content)
@@ -192,7 +210,6 @@ namespace Helpdesk.Controllers
 			return RedirectToAction(nameof(TicketDetails), new { id = ticketId });
 		}
 
-		// POST: Tickets/DeleteComment/5
 		[HttpPost]
 		[ValidateAntiForgeryToken]
 		public async Task<IActionResult> DeleteComment(int id)
@@ -215,7 +232,6 @@ namespace Helpdesk.Controllers
 			return RedirectToAction(nameof(TicketDetails), new { id = ticketId });
 		}
 
-		// POST: Tickets/UploadAttachment
 		[HttpPost]
 		[ValidateAntiForgeryToken]
 		public async Task<IActionResult> UploadAttachment(int ticketId, IFormFile file)
@@ -261,7 +277,6 @@ namespace Helpdesk.Controllers
 			return RedirectToAction(nameof(TicketDetails), new { id = ticketId });
 		}
 
-		// GET: Tickets/DownloadAttachment/5
 		public async Task<IActionResult> DownloadAttachment(int id)
 		{
 			var attachment = await _context.Attachments.FindAsync(id);
@@ -272,7 +287,6 @@ namespace Helpdesk.Controllers
 			return PhysicalFile(path, mimeType, attachment.FileName);
 		}
 
-		// POST: Tickets/DeleteAttachment/5
 		[HttpPost]
 		[ValidateAntiForgeryToken]
 		public async Task<IActionResult> DeleteAttachment(int id)
@@ -300,6 +314,45 @@ namespace Helpdesk.Controllers
 			await _context.SaveChangesAsync();
 
 			return RedirectToAction(nameof(TicketDetails), new { id = ticketId });
+		}
+
+		[HttpPost]
+		[ValidateAntiForgeryToken]
+		public async Task<IActionResult> AssignToMe(int id)
+		{
+			var user = await _userManager.GetUserAsync(User);
+			if (user == null) return Challenge();
+
+			bool isAgent = await _userManager.IsInRoleAsync(user, "Agent") || await _userManager.IsInRoleAsync(user, "Admin");
+
+			if (!isAgent) return Forbid();
+
+			var ticket = await _context.Tickets.FirstOrDefaultAsync(t => t.Id == id);
+			if (ticket == null) return NotFound();
+
+			ticket.AssignedToId = user.Id;
+			if (ticket.Status == "Nowy") ticket.Status = "Otwarte";
+
+			await _context.SaveChangesAsync();
+			return RedirectToAction(nameof(TicketDetails), new { id });
+		}
+
+		[HttpPost]
+		[ValidateAntiForgeryToken]
+		public async Task<IActionResult> Unassign(int id)
+		{
+			var user = await _userManager.GetUserAsync(User);
+			if (user == null) return Challenge();
+
+			bool isAgent = await _userManager.IsInRoleAsync(user, "Agent") || await _userManager.IsInRoleAsync(user, "Admin");
+			if (!isAgent) return Forbid();
+
+			var ticket = await _context.Tickets.FirstOrDefaultAsync(t => t.Id == id);
+			if (ticket == null) return NotFound();
+
+			ticket.AssignedToId = null;
+			await _context.SaveChangesAsync();
+			return RedirectToAction(nameof(TicketDetails), new { id });
 		}
 
 		public string GetUploadsFolder()

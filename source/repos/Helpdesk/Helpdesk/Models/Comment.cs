@@ -1,6 +1,8 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
-using Helpdesk.Models; 
+using Helpdesk.Models;
+using Helpdesk.Data;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 
 public class Comment
 {
@@ -14,5 +16,9 @@ public class Comment
 	// Relacje
 	public int TicketId { get; set; }
 	public Ticket Ticket { get; set; }
-	public string UserId { get; set; } // Dodano pole UserId
+
+	public string UserId { get; set; }
+
+	[ValidateNever] // NOWE: nawigacja do użytkownika
+	public ApplicationUser? User { get; set; }
 }

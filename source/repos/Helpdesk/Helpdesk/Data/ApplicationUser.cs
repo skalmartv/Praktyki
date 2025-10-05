@@ -4,5 +4,6 @@ namespace Helpdesk.Data
 {
 	public class ApplicationUser : IdentityUser
 	{
+		
 	}
 }

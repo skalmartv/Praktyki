@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
-
+using Helpdesk.Data;
 namespace Helpdesk.Areas.Identity.Pages.Account
 {
     public class LogoutModel : PageModel
