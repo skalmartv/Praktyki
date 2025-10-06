@@ -19,7 +19,15 @@
         <span asp-validation-for="Description" class="text-danger"></span>
     </div>
 
-    
+    <div class="mb-3">
+        <label class="form-label">Priorytet</label>
+        <select asp-for="Priority" class="form-select">
+            <option value="Niski">Niski</option>
+            <option value="Normalny" selected>Normalny</option>
+            <option value="Wysoki">Wysoki</option>
+            <option value="Krytyczny">Krytyczny</option>
+        </select>
+    </div>
 
     <button type="submit" class="btn btn-success">Zapisz</button>
     <a asp-controller="Tickets" asp-action="TicketIndex" class="btn btn-secondary">Anuluj</a>

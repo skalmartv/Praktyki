@@ -28,10 +28,14 @@ namespace Helpdesk.Models
 		[ValidateNever]
 		public string UserId { get; set; }
 
-		[ValidateNever] // NOWE: nawigacja do autora
+		[ValidateNever] // nawigacja do autora
 		public ApplicationUser? CreatedBy { get; set; }
 
 		public string? Status { get; set; } = "Nowy";
+
+		// NOWE: Priorytet
+		[StringLength(20)]
+		public string Priority { get; set; } = "Normalny"; // wartości: Niski, Normalny, Wysoki, Krytyczny
 
 		public string? AssignedToId { get; set; }
 		[ValidateNever]

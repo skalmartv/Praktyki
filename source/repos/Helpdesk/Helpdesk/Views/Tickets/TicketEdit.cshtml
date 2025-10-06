@@ -21,7 +21,8 @@
         <span asp-validation-for="Description" class="text-danger"></span>
     </div>
 
-    
+    <!-- Priorytet celowo ukryty przed zwykłym userem jeśli nie chcesz aby edytował (opcjonalnie usuń cały blok) -->
+    <input type="hidden" asp-for="Priority" />
 
     <button type="submit" class="btn btn-success">Zapisz</button>
     <a asp-controller="Tickets" asp-action="TicketIndex" class="btn btn-secondary">Anuluj</a>

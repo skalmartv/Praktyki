@@ -4,10 +4,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Helpdesk.Data;
 using Helpdesk.Models;
+using System.Linq;
 
 namespace Helpdesk.Controllers
 {
-	[Authorize] // tylko zalogowani użytkownicy
+	[Authorize]
 	public class TicketsController : Controller
 	{
 		private readonly AppDbContext _context;
@@ -22,25 +23,56 @@ namespace Helpdesk.Controllers
 		}
 
 		private static readonly string[] _allowedStatuses = new[] { "Nowy", "Otwarte", "W toku", "Oczekuje", "Zamknięty" };
+		private static readonly string[] _allowedPriorities = new[] { "Niski", "Normalny", "Wysoki", "Krytyczny" };
 
-		public async Task<IActionResult> TicketIndex()
+		// INDEX z wyszukiwaniem / filtrowaniem / sortowaniem
+		public async Task<IActionResult> TicketIndex(string search, string status, string priority, string sort = "desc")
 		{
 			var user = await _userManager.GetUserAsync(User);
 			if (user == null) return Challenge();
 
 			bool isAgent = await _userManager.IsInRoleAsync(user, "Agent") || await _userManager.IsInRoleAsync(user, "Admin");
 
-			var query = _context.Tickets.AsQueryable();
+			var query = _context.Tickets
+				.Include(t => t.AssignedTo)
+				.Include(t => t.CreatedBy)
+				.AsQueryable();
 
 			if (!isAgent)
 				query = query.Where(t => t.UserId == user.Id);
 
-			var tickets = await query
-				.Include(t => t.AssignedTo)
-				.Include(t => t.CreatedBy)
-				.ToListAsync();
+			// Filtrowanie status
+			if (!string.IsNullOrWhiteSpace(status) && _allowedStatuses.Contains(status))
+				query = query.Where(t => t.Status == status);
+
+			// Filtrowanie priorytetu
+			if (!string.IsNullOrWhiteSpace(priority) && _allowedPriorities.Contains(priority))
+				query = query.Where(t => t.Priority == priority);
+
+			// Wyszukiwanie w tytule i opisie
+			if (!string.IsNullOrWhiteSpace(search))
+			{
+				string s = search.Trim();
+				query = query.Where(t =>
+					t.Title.Contains(s) ||
+					t.Description.Contains(s));
+			}
+
+			// Sortowanie po dacie (CreatedAt)
+			query = sort == "asc"
+				? query.OrderBy(t => t.CreatedAt)
+				: query.OrderByDescending(t => t.CreatedAt);
+
+			var tickets = await query.ToListAsync();
 
 			ViewBag.CurrentUserId = user.Id;
+			ViewBag.Statuses = _allowedStatuses;
+			ViewBag.Priorities = _allowedPriorities;
+			ViewBag.FilterSearch = search;
+			ViewBag.FilterStatus = status;
+			ViewBag.FilterPriority = priority;
+			ViewBag.Sort = sort;
+
 			return View(tickets);
 		}
 
@@ -82,6 +114,10 @@ namespace Helpdesk.Controllers
 			ticket.UserId = user.Id;
 			ticket.CreatedAt = DateTime.UtcNow;
 
+			// Walidacja priorytetu (fallback jeśli ktoś podmieni formularz)
+			if (!_allowedPriorities.Contains(ticket.Priority))
+				ticket.Priority = "Normalny";
+
 			if (ModelState.IsValid)
 			{
 				_context.Tickets.Add(ticket);
@@ -91,7 +127,6 @@ namespace Helpdesk.Controllers
 			return View(ticket);
 		}
 
-		// OGRANICZENIE: tylko właściciel może edytować zawartość (tytuł/opis)
 		public async Task<IActionResult> TicketEdit(int? id)
 		{
 			if (id == null) return NotFound();
@@ -101,12 +136,11 @@ namespace Helpdesk.Controllers
 			var ticket = await _context.Tickets
 				.FirstOrDefaultAsync(t => t.Id == id && t.UserId == user.Id);
 
-			if (ticket == null) return Forbid(); // brak dostępu dla agenta/admina jeśli nie jest właścicielem
+			if (ticket == null) return Forbid();
 
 			return View(ticket);
 		}
 
-		// OGRANICZENIE: tylko właściciel może zmienić tytuł/opis
 		[HttpPost]
 		[ValidateAntiForgeryToken]
 		public async Task<IActionResult> TicketEdit(int id, Ticket formModel)
@@ -120,11 +154,11 @@ namespace Helpdesk.Controllers
 
 			ticket.Title = formModel.Title;
 			ticket.Description = formModel.Description;
+			// Priorytetu zwykły user nie zmienia tutaj (możesz dodać jeśli ma być możliwe)
 			await _context.SaveChangesAsync();
 			return RedirectToAction(nameof(TicketDetails), new { id = id });
 		}
 
-		// NOWE: osobny endpoint do zmiany statusu (TERAZ tylko Agent/Admin)
 		[HttpPost]
 		[ValidateAntiForgeryToken]
 		public async Task<IActionResult> UpdateStatus(int id, string status)
@@ -133,7 +167,7 @@ namespace Helpdesk.Controllers
 			if (user == null) return Challenge();
 
 			bool isAgent = await _userManager.IsInRoleAsync(user, "Agent") || await _userManager.IsInRoleAsync(user, "Admin");
-			if (!isAgent) return Forbid(); // zwykły użytkownik nie może zmieniać statusu
+			if (!isAgent) return Forbid();
 
 			var ticket = await _context.Tickets.FirstOrDefaultAsync(t => t.Id == id);
 			if (ticket == null) return NotFound();
@@ -145,7 +179,6 @@ namespace Helpdesk.Controllers
 			return RedirectToAction(nameof(TicketDetails), new { id });
 		}
 
-		// USUWANIE: właściciel lub agent/admin mogą usuwać
 		public async Task<IActionResult> TicketDelete(int? id)
 		{
 			if (id == null) return NotFound();
