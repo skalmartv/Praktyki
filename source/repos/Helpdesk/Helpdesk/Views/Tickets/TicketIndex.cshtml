@@ -1,7 +1,7 @@
 ﻿@model IEnumerable<Helpdesk.Models.Ticket>
 
 @{
-    ViewData["Title"] = "Moje tickety";
+    ViewData["Title"] = "Moje zgłoszenia";
     var currentUserId = ViewBag.CurrentUserId as string;
     var statuses = ViewBag.Statuses as string[] ?? Array.Empty<string>();
     var priorities = ViewBag.Priorities as string[] ?? Array.Empty<string>();
@@ -15,7 +15,7 @@
 
 <form method="get" class="row g-2 mb-3">
     <div class="col-md-3">
-        <input type="text" name="search" value="@currentSearch" class="form-control" placeholder="Szukaj w tytule/opisie" />
+        <input type="text" name="search" value="@currentSearch" class="form-control" placeholder="Szukaj w tytule / opisie" />
     </div>
     <div class="col-md-2">
         <select name="status" class="form-select">
@@ -48,7 +48,7 @@
 </form>
 
 <p>
-    <a class="btn btn-success" asp-controller="Tickets" asp-action="TicketCreate">Utwórz nowy ticket</a>
+    <a class="btn btn-success" asp-controller="Tickets" asp-action="TicketCreate">Utwórz nowe zgłoszenie</a>
 </p>
 
 <table class="table table-striped table-sm align-middle">
@@ -77,11 +77,12 @@
                 <td>@ticket.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
                 <td>
                     <a class="btn btn-info btn-sm" asp-action="TicketDetails" asp-route-id="@ticket.Id">Szczegóły</a>
-                    @if (ticket.UserId == currentUserId)
+                    @* Usunięto przycisk Edytuj dla wszystkich *@
+                    @* Usuwanie tylko dla Agent/Admin – sprawdzamy role z kontekstu użytkownika *@
+                    @if (User.IsInRole("Agent") || User.IsInRole("Admin"))
                     {
-                        <a class="btn btn-warning btn-sm" asp-action="TicketEdit" asp-route-id="@ticket.Id">Edytuj</a>
+                        <a class="btn btn-danger btn-sm" asp-action="TicketDelete" asp-route-id="@ticket.Id">Usuń</a>
                     }
-                    <a class="btn btn-danger btn-sm" asp-action="TicketDelete" asp-route-id="@ticket.Id">Usuń</a>
                 </td>
             </tr>
         }

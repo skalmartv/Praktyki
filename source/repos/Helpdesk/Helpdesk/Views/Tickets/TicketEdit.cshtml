@@ -1,7 +1,7 @@
 ﻿@model Helpdesk.Models.Ticket
 
 @{
-    ViewData["Title"] = "Edytuj ticket";
+    ViewData["Title"] = "Edytuj zgłoszenie";
 }
 
 <h2>@ViewData["Title"]</h2>
@@ -10,18 +10,17 @@
     <input type="hidden" asp-for="Id" />
 
     <div class="mb-3">
-        <label asp-for="Title" class="form-label"></label>
+        <label class="form-label" for="Title">Tytuł</label>
         <input asp-for="Title" class="form-control" />
         <span asp-validation-for="Title" class="text-danger"></span>
     </div>
 
     <div class="mb-3">
-        <label asp-for="Description" class="form-label"></label>
+        <label class="form-label" for="Description">Opis</label>
         <textarea asp-for="Description" class="form-control"></textarea>
         <span asp-validation-for="Description" class="text-danger"></span>
     </div>
 
-    <!-- Priorytet celowo ukryty przed zwykłym userem jeśli nie chcesz aby edytował (opcjonalnie usuń cały blok) -->
     <input type="hidden" asp-for="Priority" />
 
     <button type="submit" class="btn btn-success">Zapisz</button>

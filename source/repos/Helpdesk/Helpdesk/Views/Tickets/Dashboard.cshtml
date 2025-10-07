@@ -1,0 +1,61 @@
+﻿@model Helpdesk.Models.ViewModels.TicketDashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard zgłoszeń";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>@ViewData["Title"]</h2>
+<p class="text-muted">Wygenerowano: @Model.GeneratedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</p>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card border-primary h-100">
+            <div class="card-body">
+                <h6 class="card-title text-primary text-uppercase">Wszystkie</h6>
+                <p class="display-6 mb-0">@Model.TotalTickets</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-success h-100">
+            <div class="card-body">
+                <h6 class="card-title text-success text-uppercase">Nowe dziś</h6>
+                <p class="display-6 mb-0">@Model.NewToday</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-warning h-100">
+            <div class="card-body">
+                <h6 class="card-title text-warning text-uppercase">Nieprzypisane</h6>
+                <p class="display-6 mb-0">@Model.Unassigned</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h4>Podział wg statusu</h4>
+<table class="table table-sm table-striped w-auto">
+    <thead>
+        <tr>
+            <th>Status</th>
+            <th>Ilość</th>
+            <th>Udział %</th>
+        </tr>
+    </thead>
+    <tbody>
+    @foreach (var s in Model.ByStatus)
+    {
+        var pct = Model.TotalTickets == 0 ? 0 : (double)s.Count / Model.TotalTickets * 100;
+        <tr>
+            <td>@s.Status</td>
+            <td>@s.Count</td>
+            <td>@pct.ToString("F1")%</td>
+        </tr>
+    }
+    </tbody>
+</table>
+
+<p class="mt-4">
+    <a class="btn btn-outline-primary btn-sm" asp-action="TicketIndex">Przejdź do listy zgłoszeń</a>
+</p>

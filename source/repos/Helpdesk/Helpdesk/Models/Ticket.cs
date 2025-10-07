@@ -11,12 +11,15 @@ namespace Helpdesk.Models
 		public int Id { get; set; }
 
 		[Required, StringLength(200)]
+		[Display(Name = "Tytuł")]
 		public string Title { get; set; }
 
 		[Required]
+		[Display(Name = "Opis")]
 		public string Description { get; set; }
 
 		[ValidateNever]
+		[Display(Name = "Data utworzenia")]
 		public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
 		[ValidateNever]
@@ -28,17 +31,19 @@ namespace Helpdesk.Models
 		[ValidateNever]
 		public string UserId { get; set; }
 
-		[ValidateNever] // nawigacja do autora
+		[ValidateNever]
 		public ApplicationUser? CreatedBy { get; set; }
 
+		[Display(Name = "Status")]
 		public string? Status { get; set; } = "Nowy";
 
-		// NOWE: Priorytet
 		[StringLength(20)]
-		public string Priority { get; set; } = "Normalny"; // wartości: Niski, Normalny, Wysoki, Krytyczny
+		[Display(Name = "Priorytet")]
+		public string Priority { get; set; } = "Normalny";
 
 		public string? AssignedToId { get; set; }
 		[ValidateNever]
+		[Display(Name = "Przypisany do")]
 		public ApplicationUser? AssignedTo { get; set; }
 	}
 }

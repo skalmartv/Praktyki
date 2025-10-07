@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Helpdesk.Data;
 using Helpdesk.Models;
+using Helpdesk.Models.ViewModels; 
 using System.Linq;
 
 namespace Helpdesk.Controllers
@@ -114,7 +115,7 @@ namespace Helpdesk.Controllers
 			ticket.UserId = user.Id;
 			ticket.CreatedAt = DateTime.UtcNow;
 
-			// Walidacja priorytetu (fallback jeśli ktoś podmieni formularz)
+			
 			if (!_allowedPriorities.Contains(ticket.Priority))
 				ticket.Priority = "Normalny";
 
@@ -127,73 +128,30 @@ namespace Helpdesk.Controllers
 			return View(ticket);
 		}
 
+		
 		public async Task<IActionResult> TicketEdit(int? id)
 		{
-			if (id == null) return NotFound();
-			var user = await _userManager.GetUserAsync(User);
-			if (user == null) return Challenge();
-
-			var ticket = await _context.Tickets
-				.FirstOrDefaultAsync(t => t.Id == id && t.UserId == user.Id);
-
-			if (ticket == null) return Forbid();
-
-			return View(ticket);
+			return Forbid(); 
 		}
 
 		[HttpPost]
 		[ValidateAntiForgeryToken]
 		public async Task<IActionResult> TicketEdit(int id, Ticket formModel)
 		{
-			var user = await _userManager.GetUserAsync(User);
-			if (user == null) return Challenge();
-			if (!ModelState.IsValid) return View(formModel);
-
-			var ticket = await _context.Tickets.FirstOrDefaultAsync(t => t.Id == id && t.UserId == user.Id);
-			if (ticket == null) return Forbid();
-
-			ticket.Title = formModel.Title;
-			ticket.Description = formModel.Description;
-			// Priorytetu zwykły user nie zmienia tutaj (możesz dodać jeśli ma być możliwe)
-			await _context.SaveChangesAsync();
-			return RedirectToAction(nameof(TicketDetails), new { id = id });
+			return Forbid(); 
 		}
 
-		[HttpPost]
-		[ValidateAntiForgeryToken]
-		public async Task<IActionResult> UpdateStatus(int id, string status)
+		
+		public async Task<IActionResult> TicketDelete(int? id)
 		{
+			if (id == null) return NotFound();
 			var user = await _userManager.GetUserAsync(User);
 			if (user == null) return Challenge();
-
 			bool isAgent = await _userManager.IsInRoleAsync(user, "Agent") || await _userManager.IsInRoleAsync(user, "Admin");
 			if (!isAgent) return Forbid();
 
 			var ticket = await _context.Tickets.FirstOrDefaultAsync(t => t.Id == id);
 			if (ticket == null) return NotFound();
-
-			if (!string.IsNullOrWhiteSpace(status) && _allowedStatuses.Contains(status))
-				ticket.Status = status;
-
-			await _context.SaveChangesAsync();
-			return RedirectToAction(nameof(TicketDetails), new { id });
-		}
-
-		public async Task<IActionResult> TicketDelete(int? id)
-		{
-			if (id == null) return NotFound();
-
-			var user = await _userManager.GetUserAsync(User);
-			if (user == null)
-				return Challenge();
-
-			bool isAgent = await _userManager.IsInRoleAsync(user, "Agent") || await _userManager.IsInRoleAsync(user, "Admin");
-
-			var ticket = await _context.Tickets
-				.FirstOrDefaultAsync(t => t.Id == id && (t.UserId == user.Id || isAgent));
-
-			if (ticket == null) return NotFound();
-
 			return View("TicketDelete", ticket);
 		}
 
@@ -216,6 +174,47 @@ namespace Helpdesk.Controllers
 				await _context.SaveChangesAsync();
 			}
 			return RedirectToAction(nameof(TicketIndex));
+		}
+
+		[HttpPost]
+		[ValidateAntiForgeryToken]
+		public async Task<IActionResult> UpdateStatus(int id, string status)
+		{
+			var user = await _userManager.GetUserAsync(User);
+			if (user == null) return Challenge();
+
+			bool isAgent = await _userManager.IsInRoleAsync(user, "Agent") || await _userManager.IsInRoleAsync(user, "Admin");
+			if (!isAgent) return Forbid();
+
+			var ticket = await _context.Tickets.FirstOrDefaultAsync(t => t.Id == id);
+			if (ticket == null) return NotFound();
+
+			if (!string.IsNullOrWhiteSpace(status) && _allowedStatuses.Contains(status))
+				ticket.Status = status;
+
+			await _context.SaveChangesAsync();
+			return RedirectToAction(nameof(TicketDetails), new { id });
+		}
+
+		[HttpPost]
+		[ValidateAntiForgeryToken]
+		public async Task<IActionResult> CloseTicket(int id)
+		{
+			var user = await _userManager.GetUserAsync(User);
+			if (user == null) return Challenge();
+
+			var ticket = await _context.Tickets.FirstOrDefaultAsync(t => t.Id == id);
+			if (ticket == null) return NotFound();
+
+			// tylko właściciel może zamknąć swoje zgłoszenie
+			if (ticket.UserId != user.Id) return Forbid();
+
+			if (ticket.Status != "Zamknięty")
+			{
+				ticket.Status = "Zamknięty";
+				await _context.SaveChangesAsync();
+			}
+			return RedirectToAction(nameof(TicketDetails), new { id });
 		}
 
 		[HttpPost]
@@ -386,6 +385,44 @@ namespace Helpdesk.Controllers
 			ticket.AssignedToId = null;
 			await _context.SaveChangesAsync();
 			return RedirectToAction(nameof(TicketDetails), new { id });
+		}
+
+		[Authorize(Roles = "Agent,Admin")]
+		public async Task<IActionResult> Dashboard()
+		{
+			var todayStartUtc = DateTime.UtcNow.Date;
+			var tomorrowUtc = todayStartUtc.AddDays(1);
+
+			var baseQuery = _context.Tickets.AsNoTracking();
+
+			var total = await baseQuery.CountAsync();
+			var newToday = await baseQuery.CountAsync(t => t.CreatedAt >= todayStartUtc && t.CreatedAt < tomorrowUtc);
+			var unassigned = await baseQuery.CountAsync(t => t.AssignedToId == null);
+
+			var grouped = await baseQuery
+				.GroupBy(t => t.Status)
+				.Select(g => new { Status = g.Key, Count = g.Count() })
+				.ToListAsync();
+
+			var byStatus = _allowedStatuses
+				.Select(s => new TicketStatusCount
+				{
+					Status = s,
+					Count = grouped.FirstOrDefault(x => x.Status == s)?.Count ?? 0
+				})
+				.ToList();
+
+			var vm = new TicketDashboardViewModel
+			{
+				TotalTickets = total,
+				NewToday = newToday,
+				Unassigned = unassigned,
+				ByStatus = byStatus,
+				AllowedStatuses = _allowedStatuses,
+				GeneratedAtUtc = DateTime.UtcNow
+			};
+
+			return View(vm);
 		}
 
 		public string GetUploadsFolder()
