@@ -23,7 +23,7 @@ namespace Helpdesk.Controllers
 			_env = env;
 		}
 
-		private static readonly string[] _allowedStatuses = new[] { "Nowy", "Otwarte", "W toku", "Oczekuje", "Zamknięty" };
+		private static readonly string[] _allowedStatuses = new[] { "Nowy", "Otwarte", "W toku", "Oczekuje", "Rozwiązane", "Zamknięty" };
 		private static readonly string[] _allowedPriorities = new[] { "Niski", "Normalny", "Wysoki", "Krytyczny" };
 
 		// INDEX z wyszukiwaniem / filtrowaniem / sortowaniem
@@ -190,7 +190,25 @@ namespace Helpdesk.Controllers
 			if (ticket == null) return NotFound();
 
 			if (!string.IsNullOrWhiteSpace(status) && _allowedStatuses.Contains(status))
+			{
+				var old = ticket.Status;
 				ticket.Status = status;
+
+				if (status == "Rozwiązane" && ticket.ResolvedAt == null)
+					ticket.ResolvedAt = DateTime.UtcNow;
+
+				// jeśli zmieniono z "Rozwiązane" na inny niż "Zamknięty" – resetuj ResolvedAt
+				if (old == "Rozwiązane" && status != "Rozwiązane")
+					ticket.ResolvedAt = null;
+
+				// manualne zamknięcie nie jest systemowe
+				if (status == "Zamknięty")
+				{
+					ticket.SystemClosed = ticket.SystemClosed; // bez zmiany jeśli już systemowo
+					if (!ticket.SystemClosed)
+						ticket.SystemClosedAt = ticket.SystemClosedAt ?? DateTime.UtcNow;
+				}
+			}
 
 			await _context.SaveChangesAsync();
 			return RedirectToAction(nameof(TicketDetails), new { id });

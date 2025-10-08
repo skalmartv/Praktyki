@@ -45,5 +45,14 @@ namespace Helpdesk.Models
 		[ValidateNever]
 		[Display(Name = "Przypisany do")]
 		public ApplicationUser? AssignedTo { get; set; }
+
+		[Display(Name = "Data oznaczenia jako Rozwiązane")]
+		public DateTime? ResolvedAt { get; set; }
+
+		[Display(Name = "Zamknięte automatycznie przez system")]
+		public bool SystemClosed { get; set; }
+
+		[Display(Name = "Data automatycznego zamknięcia")]
+		public DateTime? SystemClosedAt { get; set; }
 	}
 }

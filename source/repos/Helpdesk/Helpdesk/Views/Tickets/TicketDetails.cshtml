@@ -1,178 +1,192 @@
 ﻿@model Helpdesk.Models.Ticket
-
 @{
     ViewData["Title"] = "Szczegóły zgłoszenia";
     Layout = "~/Views/Shared/_Layout.cshtml";
     var isAuth = User?.Identity?.IsAuthenticated ?? false;
     var currentUserId = User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 }
+<h2 class="mb-4">@ViewData["Title"]</h2>
 
-<h1>Szczegóły zgłoszenia</h1>
-
-@if (TempData["UploadError"] is string uploadErr && !string.IsNullOrWhiteSpace(uploadErr))
-{
-    <div class="alert alert-danger">@uploadErr</div>
-}
-@if (TempData["CommentError"] is string commentErr && !string.IsNullOrWhiteSpace(commentErr))
-{
-    <div class="alert alert-danger">@commentErr</div>
-}
-
-<div>
-    <h4>Zgłoszenie</h4>
-    <hr />
-    <dl class="row">
-        <dt class="col-sm-2">Tytuł</dt>
-        <dd class="col-sm-10">@Model.Title</dd>
-        <dt class="col-sm-2">Opis</dt>
-        <dd class="col-sm-10">@Model.Description</dd>
-        <dt class="col-sm-2">Utworzony</dt>
-        <dd class="col-sm-10">@Model.CreatedAt.ToLocalTime()</dd>
-        <dt class="col-sm-2">Autor</dt>
-        <dd class="col-sm-10">
-            @(Model.CreatedBy?.UserName ?? Model.CreatedBy?.Email ?? Model.UserId)
-        </dd>
-    </dl>
-</div>
-
-<hr />
-
-<h4>Dodaj załącznik</h4>
-<form asp-action="UploadAttachment" asp-controller="Tickets" method="post" enctype="multipart/form-data">
-    @Html.AntiForgeryToken()
-    <input type="hidden" name="ticketId" value="@Model.Id" />
-    <div class="form-group">
-        <input type="file" name="file" class="form-control" required />
-    </div>
-    <button type="submit" class="btn btn-secondary mt-2">Wyślij</button>
-</form>
-
-<hr />
-
-<h4>Załączniki</h4>
-@if (Model.Attachments != null && Model.Attachments.Any())
-{
-    <ul class="list-group mb-3">
-        @foreach (var attachment in Model.Attachments.OrderByDescending(a => a.UploadedAt))
-        {
-            <li class="list-group-item">
-                <a asp-action="DownloadAttachment" asp-controller="Tickets" asp-route-id="@attachment.Id">
-                    @attachment.FileName
-                </a>
-                <small class="text-muted ms-2">
-                    (@(attachment.User?.UserName ?? attachment.User?.Email ?? attachment.UserId))
-                </small>
-            </li>
-        }
-    </ul>
-}
-else
-{
-    <p>Brak załączników.</p>
-}
-
-<hr />
-
-<h4>Dodaj komentarz</h4>
-<form asp-action="AddComment" asp-controller="Tickets" method="post">
-    @Html.AntiForgeryToken()
-    <input type="hidden" name="ticketId" value="@Model.Id" />
-    <div class="form-group">
-        <textarea name="content" class="form-control" rows="3" placeholder="Napisz komentarz..." required></textarea>
-    </div>
-    <button type="submit" class="btn btn-primary mt-2">Dodaj</button>
-</form>
-
-<hr />
-
-<h4>Komentarze</h4>
-@if (Model.Comments != null && Model.Comments.Any())
-{
-    <ul class="list-group mb-3">
-        @foreach (var comment in Model.Comments.OrderByDescending(c => c.CreatedAt))
-        {
-            <li class="list-group-item d-flex justify-content-between align-items-start">
-                <div>
-                    <strong>@(comment.User?.UserName ?? comment.User?.Email ?? comment.UserId)</strong> napisał:
-                    <p>@comment.Content</p>
-                    <small class="text-muted">@comment.CreatedAt.ToLocalTime().ToString("g")</small>
-                </div>
-
-                @if (isAuth && comment.UserId == currentUserId)
-                {
-                    <form asp-action="DeleteComment" asp-controller="Tickets" method="post" class="ms-2">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="id" value="@comment.Id" />
-                        <button type="submit" class="btn btn-sm btn-danger">Usuń</button>
-                    </form>
-                }
-            </li>
-        }
-    </ul>
-}
-else
-{
-    <p>Brak komentarzy.</p>
-}
-
-<hr />
-
-@if (ViewBag.AllowedStatuses is string[] sts && (User.IsInRole("Agent") || User.IsInRole("Admin")))
-{
-    <hr />
-    <h4>Status i przypisanie</h4>
-    <form asp-action="UpdateStatus" asp-controller="Tickets" method="post" class="row g-2">
-        @Html.AntiForgeryToken()
-        <input type="hidden" name="id" value="@Model.Id" />
-        <div class="col-auto">
-            <select name="status" class="form-select">
-                @foreach (var s in sts)
-                {
-                    <option value="@s" selected="@(Model.Status == s)">
-                        @s
-                    </option>
-                }
-            </select>
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card mb-4 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Zgłoszenie</h5>
+                <dl class="row mb-0">
+                    <dt class="col-sm-3">Tytuł</dt>
+                    <dd class="col-sm-9">@Model.Title</dd>
+                    <dt class="col-sm-3">Opis</dt>
+                    <dd class="col-sm-9">@Model.Description</dd>
+                    <dt class="col-sm-3">Utworzony</dt>
+                    <dd class="col-sm-9">@Model.CreatedAt.ToLocalTime()</dd>
+                    <dt class="col-sm-3">Autor</dt>
+                    <dd class="col-sm-9">@(Model.CreatedBy?.UserName ?? Model.CreatedBy?.Email ?? Model.UserId)</dd>
+                </dl>
+            </div>
         </div>
-        <div class="col-auto">
-            <button type="submit" class="btn btn-primary btn-sm">Zapisz status</button>
-        </div>
-    </form>
 
-    <div class="mt-2">
-        <strong>Przypisane do:</strong>
-        @(Model.AssignedTo == null ? "—" : (Model.AssignedTo.UserName ?? Model.AssignedTo.Email ?? Model.AssignedToId))
-        @if (User.IsInRole("Agent") || User.IsInRole("Admin"))
-        {
-            <form asp-action="AssignToMe" asp-controller="Tickets" method="post" class="d-inline">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="id" value="@Model.Id" />
-                <button type="submit" class="btn btn-outline-success btn-sm" @((Model.AssignedToId == currentUserId) ? "disabled" : "")>Przypisz do mnie</button>
-            </form>
-            @if (Model.AssignedToId != null)
+        <div class="card mb-4 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Załączniki</h5>
+                @if (Model.Attachments != null && Model.Attachments.Any())
+                {
+                    <ul class="list-group list-group-flush mb-3">
+                        @foreach (var attachment in Model.Attachments.OrderByDescending(a => a.UploadedAt))
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <a asp-action="DownloadAttachment" asp-controller="Tickets" asp-route-id="@attachment.Id">
+                                        @attachment.FileName
+                                    </a>
+                                    <small class="text-muted ms-2">
+                                        (@(attachment.User?.UserName ?? attachment.User?.Email ?? attachment.UserId))
+                                    </small>
+                                </div>
+                                <small class="text-muted">@attachment.UploadedAt.ToLocalTime().ToString("g")</small>
+                            </li>
+                        }
+                    </ul>
+                }
+                else
+                {
+                    <p class="text-muted">Brak załączników.</p>
+                }
+
+                <form asp-action="UploadAttachment" asp-controller="Tickets" method="post" enctype="multipart/form-data" class="mt-2">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="ticketId" value="@Model.Id" />
+                    <div class="mb-2">
+                        <input type="file" name="file" class="form-control" required />
+                    </div>
+                    <button type="submit" class="btn btn-outline-secondary btn-sm btn-hover">Wyślij</button>
+                </form>
+
+                @if (TempData["UploadError"] is string uploadErr && !string.IsNullOrWhiteSpace(uploadErr))
+                {
+                    <div class="alert alert-danger mt-2 mb-0">@uploadErr</div>
+                }
+            </div>
+        </div>
+
+        <div class="card mb-4 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Komentarze</h5>
+                @if (Model.Comments != null && Model.Comments.Any())
+                {
+                    <ul class="list-group list-group-flush mb-3">
+                        @foreach (var comment in Model.Comments.OrderByDescending(c => c.CreatedAt))
+                        {
+                            <li class="list-group-item">
+                                <div class="d-flex justify-content-between">
+                                    <strong>@(comment.User?.UserName ?? comment.User?.Email ?? comment.UserId)</strong>
+                                    <small class="text-muted">@comment.CreatedAt.ToLocalTime().ToString("g")</small>
+                                </div>
+                                <p class="mb-2">@comment.Content</p>
+                                @if (isAuth && comment.UserId == currentUserId)
+                                {
+                                    <form asp-action="DeleteComment" asp-controller="Tickets" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@comment.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger btn-hover">Usuń</button>
+                                    </form>
+                                }
+                            </li>
+                        }
+                    </ul>
+                }
+                else
+                {
+                    <p class="text-muted">Brak komentarzy.</p>
+                }
+
+                <form asp-action="AddComment" asp-controller="Tickets" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="ticketId" value="@Model.Id" />
+                    <div class="mb-2">
+                        <textarea name="content" class="form-control" rows="3" placeholder="Napisz komentarz..." required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm btn-hover">Dodaj</button>
+                </form>
+
+                @if (TempData["CommentError"] is string commentErr && !string.IsNullOrWhiteSpace(commentErr))
+                {
+                    <div class="alert alert-danger mt-2 mb-0">@commentErr</div>
+                }
+            </div>
+        </div>
+
+        <div class="d-flex align-items-center gap-2">
+            @if (Model.Status != "Zamknięty" && Model.UserId == currentUserId)
             {
-                <form asp-action="Unassign" asp-controller="Tickets" method="post" class="d-inline ms-1">
+                <form asp-action="CloseTicket" asp-controller="Tickets" method="post">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="id" value="@Model.Id" />
-                    <button type="submit" class="btn btn-outline-secondary btn-sm">Usuń przypisanie</button>
+                    <button type="submit" class="btn btn-outline-danger btn-sm btn-hover">Zamknij zgłoszenie</button>
                 </form>
             }
+            <a asp-action="TicketIndex" class="btn btn-outline-secondary btn-sm">Powrót</a>
+        </div>
+
+        @if (Model.SystemClosed)
+        {
+            <div class="alert alert-info mt-3">
+                Zgłoszenie zostało automatycznie zamknięte (@Model.SystemClosedAt?.ToLocalTime()) po 7 dniach od oznaczenia jako "Rozwiązane".
+            </div>
         }
     </div>
-}
 
-<hr />
+    <div class="col-lg-5">
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Status</h5>
+                <p><strong>Aktualny:</strong> @Model.Status</p>
 
-<div>
-    @* Brak linku Edytuj *@
-    @if (Model.Status != "Zamknięty" && Model.UserId == currentUserId)
-    {
-        <form asp-action="CloseTicket" asp-controller="Tickets" method="post" class="d-inline">
-            @Html.AntiForgeryToken()
-            <input type="hidden" name="id" value="@Model.Id" />
-            <button type="submit" class="btn btn-outline-danger btn-sm">Zamknij zgłoszenie</button>
-        </form>
-        <span>|</span>
-    }
-    <a asp-action="TicketIndex">Powrót do listy</a>
+                @if (ViewBag.AllowedStatuses is string[] sts && (User.IsInRole("Agent") || User.IsInRole("Admin")))
+                {
+                    <form asp-action="UpdateStatus" asp-controller="Tickets" method="post" class="row g-2">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@Model.Id" />
+                        <div class="col-8">
+                            <select name="status" class="form-select form-select-sm">
+                                @foreach (var s in sts)
+                                {
+                                    <option value="@s" selected="@(Model.Status == s)">@s</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-4">
+                            <button type="submit" class="btn btn-primary btn-sm w-100">Zapisz</button>
+                        </div>
+                    </form>
+                }
+
+                <hr />
+                <p class="mb-1"><strong>Przypisane do:</strong></p>
+                <p>
+                    @(Model.AssignedTo == null
+                        ? "—"
+                        : (Model.AssignedTo.UserName ?? Model.AssignedTo.Email ?? Model.AssignedToId))
+                </p>
+
+                @if (User.IsInRole("Agent") || User.IsInRole("Admin"))
+                {
+                    <div class="d-flex flex-wrap gap-2">
+                        <form asp-action="AssignToMe" asp-controller="Tickets" method="post" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@Model.Id" />
+                            <button type="submit" class="btn btn-outline-success btn-sm" @((Model.AssignedToId == currentUserId) ? "disabled" : "")>Przypisz do mnie</button>
+                        </form>
+                        @if (Model.AssignedToId != null)
+                        {
+                            <form asp-action="Unassign" asp-controller="Tickets" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@Model.Id" />
+                                <button type="submit" class="btn btn-outline-secondary btn-sm">Usuń przypisanie</button>
+                            </form>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
 </div>

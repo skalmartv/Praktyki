@@ -1,0 +1,25 @@
+﻿
+@using Microsoft.AspNetCore.Mvc.ModelBinding
+@* Zbiorcze wyświetlenie unikalnych błędów walidacji *@
+@if (!ViewData.ModelState.IsValid)
+{
+    var allErrors = ViewData.ModelState
+        .SelectMany(kv => kv.Value?.Errors ?? Enumerable.Empty<ModelError>())
+        .Select(e => e.ErrorMessage)
+        .Where(m => !string.IsNullOrWhiteSpace(m))
+        .Distinct()
+        .ToList();
+
+    if (allErrors.Any())
+    {
+        <div class="alert alert-danger">
+            <strong>Wystąpiły błędy:</strong>
+            <ul class="mb-0">
+                @foreach (var msg in allErrors)
+                {
+                    <li>@msg</li>
+                }
+            </ul>
+        </div>
+    }
+}

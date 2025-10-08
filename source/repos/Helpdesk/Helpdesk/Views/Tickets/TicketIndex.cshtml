@@ -1,90 +1,111 @@
 ﻿@model IEnumerable<Helpdesk.Models.Ticket>
 
 @{
-    ViewData["Title"] = "Moje zgłoszenia";
-    var currentUserId = ViewBag.CurrentUserId as string;
-    var statuses = ViewBag.Statuses as string[] ?? Array.Empty<string>();
-    var priorities = ViewBag.Priorities as string[] ?? Array.Empty<string>();
-    string currentSearch = ViewBag.FilterSearch as string;
-    string currentStatus = ViewBag.FilterStatus as string;
-    string currentPriority = ViewBag.FilterPriority as string;
-    string currentSort = ViewBag.Sort as string ?? "desc";
+    ViewData["Title"] = "Lista zgłoszeń";
+    var currentSort = ViewBag.Sort as string;
 }
+<h2 class="mb-3">@ViewData["Title"]</h2>
 
-<h2>@ViewData["Title"]</h2>
-
-<form method="get" class="row g-2 mb-3">
-    <div class="col-md-3">
-        <input type="text" name="search" value="@currentSearch" class="form-control" placeholder="Szukaj w tytule / opisie" />
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row gy-2 gx-3 align-items-end">
+            <div class="col-sm-4 col-md-3">
+                <label class="form-label">Szukaj</label>
+                <input type="text" name="search" value="@ViewBag.FilterSearch" class="form-control" placeholder="fraza..." />
+            </div>
+            <div class="col-sm-4 col-md-2">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-select">
+                    <option value="">(Wszystkie)</option>
+                    @if (ViewBag.Statuses is string[] sts)
+                    {
+                        foreach (var s in sts)
+                        {
+                            <option value="@s" selected="@(ViewBag.FilterStatus == s)">@s</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-sm-4 col-md-2">
+                <label class="form-label">Priorytet</label>
+                <select name="priority" class="form-select">
+                    <option value="">(Wszystkie)</option>
+                    @if (ViewBag.Priorities is string[] pr)
+                    {
+                        foreach (var p in pr)
+                        {
+                            <option value="@p" selected="@(ViewBag.FilterPriority == p)">@p</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-sm-6 col-md-2">
+                <label class="form-label">Sortowanie</label>
+                <select name="sort" class="form-select">
+                    <option value="desc" selected="@(currentSort=="desc")">Najnowsze</option>
+                    <option value="asc" selected="@(currentSort=="asc")">Najstarsze</option>
+                </select>
+            </div>
+            <div class="col-sm-6 col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-primary flex-grow-1">Filtruj</button>
+                <a asp-action="TicketIndex" class="btn btn-outline-secondary">Wyczyść</a>
+            </div>
+        </form>
     </div>
-    <div class="col-md-2">
-        <select name="status" class="form-select">
-            <option value="">-- Status --</option>
-            @foreach (var s in statuses)
-            {
-                <option value="@s" selected="@(s == currentStatus)">@s</option>
-            }
-        </select>
-    </div>
-    <div class="col-md-2">
-        <select name="priority" class="form-select">
-            <option value="">-- Priorytet --</option>
-            @foreach (var p in priorities)
-            {
-                <option value="@p" selected="@(p == currentPriority)">@p</option>
-            }
-        </select>
-    </div>
-    <div class="col-md-2">
-        <select name="sort" class="form-select">
-            <option value="desc" selected="@(currentSort=="desc")">Najnowsze</option>
-            <option value="asc" selected="@(currentSort=="asc")">Najstarsze</option>
-        </select>
-    </div>
-    <div class="col-md-3 d-flex">
-        <button type="submit" class="btn btn-primary me-2">Filtruj</button>
-        <a asp-action="TicketIndex" class="btn btn-secondary">Wyczyść</a>
-    </div>
-</form>
+</div>
 
 <p>
-    <a class="btn btn-success" asp-controller="Tickets" asp-action="TicketCreate">Utwórz nowe zgłoszenie</a>
+    <a class="btn btn-success btn-hover" asp-controller="Tickets" asp-action="TicketCreate">Utwórz nowe zgłoszenie</a>
 </p>
 
-<table class="table table-striped table-sm align-middle">
-    <thead>
+<table class="table table-hover table-sm align-middle">
+    <thead class="table-light">
         <tr>
             <th>Tytuł</th>
             <th>Status</th>
             <th>Priorytet</th>
             <th>Przypisany</th>
-            <th>Data utworzenia</th>
+            <th>Data</th>
             <th style="width:160px;">Akcje</th>
         </tr>
     </thead>
     <tbody>
-        @foreach (var ticket in Model)
-        {
-            <tr>
-                <td>@ticket.Title</td>
-                <td>@ticket.Status</td>
-                <td>@ticket.Priority</td>
-                <td>
-                    @(ticket.AssignedTo == null 
-                        ? "—" 
-                        : (ticket.AssignedTo.UserName ?? ticket.AssignedTo.Email ?? ticket.AssignedToId))
-                </td>
-                <td>@ticket.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
-                <td>
-                    <a class="btn btn-info btn-sm" asp-action="TicketDetails" asp-route-id="@ticket.Id">Szczegóły</a>
-                    @* Usunięto przycisk Edytuj dla wszystkich *@
-                    @* Usuwanie tylko dla Agent/Admin – sprawdzamy role z kontekstu użytkownika *@
-                    @if (User.IsInRole("Agent") || User.IsInRole("Admin"))
-                    {
-                        <a class="btn btn-danger btn-sm" asp-action="TicketDelete" asp-route-id="@ticket.Id">Usuń</a>
-                    }
-                </td>
-            </tr>
-        }
+    @foreach (var ticket in Model)
+    {
+        string statusClass = ticket.Status switch {
+            "Nowy" => "secondary",
+            "Otwarte" => "primary",
+            "W toku" => "info",
+            "Oczekuje" => "warning",
+            "Rozwiązane" => "success",
+            "Zamknięty" => "dark",
+            _ => "light"
+        };
+        string prioClass = ticket.Priority switch {
+            "Niski" => "secondary",
+            "Normalny" => "primary",
+            "Wysoki" => "warning",
+            "Krytyczny" => "danger",
+            _ => "light"
+        };
+        <tr>
+            <td class="fw-semibold">@ticket.Title</td>
+            <td><span class="badge bg-@statusClass">@ticket.Status</span></td>
+            <td><span class="badge bg-@prioClass">@ticket.Priority</span></td>
+            <td>
+                @(ticket.AssignedTo == null
+                    ? "—"
+                    : (ticket.AssignedTo.UserName ?? ticket.AssignedTo.Email ?? ticket.AssignedToId))
+            </td>
+            <td>@ticket.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+            <td>
+                <a class="btn btn-info btn-sm btn-hover" asp-action="TicketDetails" asp-route-id="@ticket.Id">Szczegóły</a>
+                @if (User.IsInRole("Agent") || User.IsInRole("Admin"))
+                {
+                    <a class="btn btn-danger btn-sm btn-hover" asp-action="TicketDelete" asp-route-id="@ticket.Id">Usuń</a>
+                }
+            </td>
+        </tr>
+    }
     </tbody>
 </table>
