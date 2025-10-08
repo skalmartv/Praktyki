@@ -46,7 +46,7 @@ Funkcje: tworzenie ticketów, komentarze, załączniki, statusy/przypisania, das
 
 4\. Uruchom Aplikacje.
 
-
+---
 
 
 
